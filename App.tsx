@@ -1,4 +1,5 @@
-import { useState, useMemo } from 'react';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { useState, useMemo, useEffect } from 'react';
 import { SafeAreaView, View, Text, Pressable, StyleSheet, TextInput, FlatList } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 
@@ -7,11 +8,58 @@ type Item = { id: string, text: string };
 const MAX_LEN = 50;
 const normalize = (s: string) => s.trim().replace(/\s+/g, ' ').toLowerCase();
 
+const STORAGE_KEY = 'mini:list:v1';
+const STORAGE_VERSION = 1;
+
 export default function App() {
   const [n, setN] = useState(0);
   const [text, setText] = useState('');
   const [items, setItems] = useState<Item[]>([]);
 
+  // 초기 데이터 로드
+  useEffect(() => {
+    (async () => {
+      try {
+        const raw = await AsyncStorage.getItem(STORAGE_KEY);
+        if (!raw) return;
+  
+        const parsed = JSON.parse(raw) as {
+          version: number;
+          items: { id: string, text: string }[];
+        };
+  
+        if (!parsed.version || parsed.version < STORAGE_VERSION) {
+          // 필요하면 여기서 변환 로직 수행
+          setItems(parsed.items ?? []);
+          //저장 포맷 최신화
+          await AsyncStorage.setItem(
+            STORAGE_KEY,
+            JSON.stringify({ version: STORAGE_VERSION, items: parsed.items ?? [] })
+          );
+        } else {
+          setItems(parsed.items ?? []);
+        }
+      } catch (e) {
+        console.warn('Failed to load items from storage', e);
+      }
+    })();
+  }, []);
+
+  // items 변경 시 저장
+  useEffect(() => {
+    (async () => {
+      try {
+        await AsyncStorage.setItem(
+          STORAGE_KEY,
+          JSON.stringify({ version: STORAGE_VERSION, items})
+        );
+      } catch (e) {
+        console.warn('Failed to save items to storage', e);
+      }
+    })();
+  }, [items]);
+
+  // 입력 처리
   const trimmed = text.trim();
   const normalizedText = normalize(text);
   const isDuplicate = items.some((it) => normalize(it.text) === normalizedText)
@@ -51,6 +99,14 @@ export default function App() {
           disabled={!canAdd}
         >
           <Text style={styles.addBtnText}>Add</Text>
+        </Pressable>
+        <Pressable style={[styles.btn, { backgroundColor: '#b00' }]}
+          onPress={async () => {
+            setItems([]);
+            await AsyncStorage.removeItem(STORAGE_KEY);
+          }}
+        >
+          <Text style={styles.btnText}>Clear All</Text>
         </Pressable>
       </View>
       <Text style={styles.helper}>
