@@ -5,6 +5,7 @@ import { StatusBar } from 'expo-status-bar';
 type Item = { id: string, text: string };
 
 const MAX_LEN = 50;
+const normalize = (s: string) => s.trim().replace(/\s+/g, ' ').toLowerCase();
 
 export default function App() {
   const [n, setN] = useState(0);
@@ -12,7 +13,10 @@ export default function App() {
   const [items, setItems] = useState<Item[]>([]);
 
   const trimmed = text.trim();
-  const canAdd = trimmed.length >= 3;
+  const normalizedText = normalize(text);
+  const isDuplicate = items.some((it) => normalize(it.text) === normalizedText)
+
+  const canAdd = trimmed.length >= 3 && !isDuplicate; // 중복이면 비활성화
 
   const remaining = MAX_LEN - text.length;
   const limitedText = (v: string) => (v.length <= MAX_LEN ? v : v.slice(0, MAX_LEN));
@@ -41,6 +45,12 @@ export default function App() {
           returnKeyType='done'
           onSubmitEditing={addItem}
         />
+        {/* <Text style={styles.helper}>
+          {isDuplicate
+            ? '이미 같은 메모가 있어요!'
+            : `입력: ${trimmed || '(비어있음)'}. 길이: ${text.length} (남은 ${remaining})`}
+        </Text> */}
+        
         <Pressable style={[styles.addBtn, !canAdd && styles.addBtnDisabled]}
           onPress={addItem}
           disabled={!canAdd}
@@ -49,8 +59,10 @@ export default function App() {
         </Pressable>
       </View>
       <Text style={styles.helper}>
-        입력: {trimmed || '(비어있음)'}. 길이: {text.length} (남은 {remaining})
-      </Text>
+          {isDuplicate
+            ? '이미 같은 메모가 있어요!'
+            : `입력: ${trimmed || '(비어있음)'}. 길이: ${text.length} (남은 ${remaining})`}
+        </Text>
 
       {/* Counter */}
       <Text style={styles.count}>{n}</Text>
