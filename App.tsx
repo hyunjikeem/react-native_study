@@ -45,11 +45,6 @@ export default function App() {
           returnKeyType='done'
           onSubmitEditing={addItem}
         />
-        {/* <Text style={styles.helper}>
-          {isDuplicate
-            ? '이미 같은 메모가 있어요!'
-            : `입력: ${trimmed || '(비어있음)'}. 길이: ${text.length} (남은 ${remaining})`}
-        </Text> */}
         
         <Pressable style={[styles.addBtn, !canAdd && styles.addBtnDisabled]}
           onPress={addItem}
