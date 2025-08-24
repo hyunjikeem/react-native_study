@@ -1,7 +1,8 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useState, useMemo, useEffect } from 'react';
-import { SafeAreaView, View, Text, Pressable, StyleSheet, TextInput, FlatList } from 'react-native';
+import { SafeAreaView, View, Text, Pressable, StyleSheet, TextInput, FlatList, Modal, TouchableOpacity } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
+import * as Haptics from 'expo-haptics';
 
 type Item = { id: string, text: string };
 
@@ -15,6 +16,31 @@ export default function App() {
   const [n, setN] = useState(0);
   const [text, setText] = useState('');
   const [items, setItems] = useState<Item[]>([]);
+  const [pendingDeleteId, setPendingDeleteId] = useState<string | null>(null);
+  const [toast, setToast] = useState<string | null>(null);
+
+  // 삭제 버튼 눌렀을 때 (삭제 확인 모달 오픈)
+  const requestDelete = (id: string) => {
+    setPendingDeleteId(id);
+  }
+
+  // 삭제 수행
+  const confirmDelete = () => {
+    if (!pendingDeleteId) return;
+    setItems(prev => prev.filter(i => i.id !== pendingDeleteId));
+    setPendingDeleteId(null);
+    Haptics.notificationAsync?.(Haptics.NotificationFeedbackType.Success);
+    showToast('Memo가 삭제되었습니다!');
+  };
+
+  // 모달 닫기
+  const cancelDelete = () => setPendingDeleteId(null);
+
+  // 토스트 헬퍼
+  const showToast = (message: string) => {
+    setToast(message);
+    setTimeout(() => setToast(null), 1600);
+  };
 
   // 초기 데이터 로드
   useEffect(() => {
@@ -143,7 +169,7 @@ export default function App() {
             renderItem={({ item }) => (
               <View style={styles.item}>
                 <Text style={{ flex: 1 }}>{item.text}</Text>
-                <Pressable onPress={() => removeItem(item.id)}>
+                <Pressable onPress={() => requestDelete(item.id)}>
                   <Text style={styles.delete}>Delete</Text>
                 </Pressable>
               </View>
@@ -151,7 +177,34 @@ export default function App() {
           />
         )}
       </View>
-
+      
+      {/* 삭제 확인 모달 */}
+      <Modal transparent visible={!!pendingDeleteId} animationType='fade' onRequestClose={cancelDelete}>
+        <View style={styles.modalBackdrop}>
+          <View style={styles.modalCard}>
+            <Text style={styles.modalTitle}>Memo를 정말 삭제할까요?</Text>
+            <Text style={styles.modalText}>삭제한 Memo는 되돌릴 수 없습니다.</Text>
+            <View style={styles.modalRow}>
+              <TouchableOpacity style={[styles.modalBtn, styles.modalCancel]} onPress={cancelDelete}>
+                <Text style={styles.modalBtnText}>Cancel</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={[styles.modalBtn, styles.modalDanger]} onPress={confirmDelete}>
+                <Text style={[styles.modalBtnText, { color: '#fff' }]}>Delete</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
+      
+      {/* 토스트 */}
+      { toast && (
+        <View style={styles.toastWrap} pointerEvents='none'>
+          <View style={styles.toastCard}>
+            <Text style={styles.toastText}>{toast}</Text>
+          </View>
+        </View>
+      )}
+      
       <StatusBar style="auto" />
     </SafeAreaView>
 
@@ -186,5 +239,33 @@ const styles = StyleSheet.create({
     flexDirection: 'row', alignItems: 'center', gap: 8,
     backgroundColor: '#f6f6f6', padding: 12, borderRadius: 12
   },
-  delete: { color: '#d00', fontWeight: '700' }
+  delete: { color: '#d00', fontWeight: '700' },
+  modalBackdrop: {
+    position: 'absolute', inset: 0,
+    backgroundColor: 'rbga(0,0,0,0.3)',
+    alignItems: 'center', justifyContent: 'center', padding: 24,
+  },
+  modalCard: {
+    width: '100%', maxWidth: 360,
+    backgroundColor: '#fff', borderRadius: 16, padding: 16, gap: 12,
+    shadowColor: '#000', shadowOpacity: 0.15, shadowRadius: 12, elevation: 4,
+  },
+  modalTitle: { fontSize: 18, fontWeight: '700' },
+  modalText: { color: '#555' },
+  modalRow: { flexDirection: 'row', gap: 8, justifyContent: 'flex-end' },
+  modalBtn: { paddingHorizontal: 14, paddingVertical: 10, borderRadius: 10 },
+  modalCancel: { backgroundColor: '#eee' },
+  modalDanger: { backgroundColor: '#c0392b' },
+  modalBtnText: { fontWeight: '700' },
+
+  toastWrap: {
+    position: 'absolute', left: 0, right: 0, bottom: 40,
+    alignItems: 'center',
+  },
+  toastCard: {
+    backgroundColor: 'rgba(0,0,0,0.85)',
+    paddingHorizontal: 14, paddingVertical: 10,
+    borderRadius: 12,
+  },
+  toastText: { color: '#fff', fontWeight: '700'},
 });
