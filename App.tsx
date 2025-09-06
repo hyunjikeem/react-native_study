@@ -1,5 +1,5 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { useState, useMemo, useEffect } from 'react';
+import { useState, useMemo, useEffect, useRef } from 'react';
 import { SafeAreaView, View, Text, Pressable, StyleSheet, TextInput, FlatList, Modal, TouchableOpacity } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import * as Haptics from 'expo-haptics';
@@ -21,6 +21,9 @@ export default function App() {
   const [query, setQuery] = useState('');
   const [editing, setEditing] = useState<Item | null>(null);
   const [editText, setEditText] = useState('');
+  const [lastDeleted, setLastDeleted] = useState<Item | null>(null); // last deleted item
+  const undoTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null); // Undo timer
+  const toastTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null); // Toast close timer
 
   // 삭제 버튼 눌렀을 때 (삭제 확인 모달 오픈)
   const requestDelete = (id: string) => {
@@ -30,20 +33,45 @@ export default function App() {
   // 삭제 수행
   const confirmDelete = () => {
     if (!pendingDeleteId) return;
-    setItems(prev => prev.filter(i => i.id !== pendingDeleteId));
+    
+    setItems(prev => {
+      const deleted = prev.find(i => i.id === pendingDeleteId) || null;
+      setLastDeleted(deleted);
+
+      if (undoTimerRef.current) clearTimeout(undoTimerRef.current);
+      undoTimerRef.current = setTimeout(() => {
+        setLastDeleted(null);
+      }, 2000);
+
+      return prev.filter(i => i.id !== pendingDeleteId);
+    });
     setPendingDeleteId(null);
     Haptics.notificationAsync?.(Haptics.NotificationFeedbackType.Success);
-    showToast('Memo가 삭제되었습니다!');
+    showToast('Memo was deleted! - Undo in 2 seconds', 2000);
   };
 
   // 모달 닫기
   const cancelDelete = () => setPendingDeleteId(null);
 
   // 토스트 헬퍼
-  const showToast = (message: string) => {
+  const showToast = (message: string, duration = 1600) => {
     setToast(message);
-    setTimeout(() => setToast(null), 1600);
+    if (toastTimerRef.current) clearTimeout(toastTimerRef.current);
+    toastTimerRef.current = setTimeout(() => setToast(null), duration);
   };
+
+  const undoDelete = () => {
+    if (!lastDeleted) return;
+    if (undoTimerRef.current) {
+      clearTimeout(undoTimerRef.current);
+      undoTimerRef.current = null;
+    }
+
+    setItems(prev => [lastDeleted, ...prev]);
+    setLastDeleted(null);
+    Haptics.selectionAsync?.();
+    showToast('Memo was restored!');
+  }
 
   // 초기 데이터 로드
   useEffect(() => {
@@ -87,6 +115,13 @@ export default function App() {
       }
     })();
   }, [items]);
+
+  useEffect(() => {
+    return () => {
+      if (undoTimerRef.current) clearTimeout(undoTimerRef.current);
+      if (toastTimerRef.current) clearTimeout(toastTimerRef.current);
+    };
+  }, []);
 
   // 입력 처리
   const trimmed = text.trim();
@@ -170,6 +205,11 @@ export default function App() {
         <Pressable style={[styles.btn, { backgroundColor: '#b00' }]}
           onPress={async () => {
             setItems([]);
+            setQuery?.('');
+
+            setLastDeleted(null);
+            if (undoTimerRef.current) { clearTimeout(undoTimerRef.current); undoTimerRef.current = null; }
+            
             await AsyncStorage.removeItem(STORAGE_KEY);
           }}
         >
@@ -269,13 +309,18 @@ export default function App() {
 
       {/* 토스트 */}
       { toast && (
-        <View style={styles.toastWrap} pointerEvents='none'>
+        <View style={styles.toastWrap} pointerEvents='box-none'>
           <View style={styles.toastCard}>
             <Text style={styles.toastText}>{toast}</Text>
+            {lastDeleted && (
+              <Pressable onPress={undoDelete} style={{ marginTop: 6, alignSelf: 'flex-end'}}>
+                <Text style={{ color: '#74b9ff', fontWeight: '700' }}>Undo</Text>
+              </Pressable>
+            )}
           </View>
         </View>
       )}
-      
+
       <StatusBar style="auto" />
     </SafeAreaView>
 
