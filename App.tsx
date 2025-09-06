@@ -19,6 +19,8 @@ export default function App() {
   const [pendingDeleteId, setPendingDeleteId] = useState<string | null>(null);
   const [toast, setToast] = useState<string | null>(null);
   const [query, setQuery] = useState('');
+  const [editing, setEditing] = useState<Item | null>(null);
+  const [editText, setEditText] = useState('');
 
   // 삭제 버튼 눌렀을 때 (삭제 확인 모달 오픈)
   const requestDelete = (id: string) => {
@@ -106,6 +108,38 @@ export default function App() {
     setItems(prev => prev.filter(i => i.id !== id));
   };
 
+  const openEdit = (item: Item) => {
+    setEditing(item);
+    setEditText(item.text);
+  };
+
+  const saveEdit = () => {
+    if (!editing) return;
+    const editedText = editText.trim();
+    if (editedText.length < 3) {
+      showToast('Type the memo with at least 3 letters');
+      return;
+    }
+
+    // duplicate check
+    const isDuplicate = items.some(i => i.id !== editing.id && normalize(i.text) === normalize(editedText));
+    if (isDuplicate) {
+      showToast('This memo already exists.');
+      return;
+    }
+    
+    setItems(prev => prev.map(i => (i.id === editing.id ? { ...i, text: editText } : i)));
+    setEditing(null);
+    setEditText('');
+    Haptics.selectionAsync?.();
+    showToast('Memo was edited!');
+  };
+
+  const cancelEdit = () => {
+    setEditing(null);
+    setEditText('');
+  }
+
   const filtered = useMemo(() => {
     const q = normalize(query);
     return q ? items.filter(i => normalize(i.text).includes(q)) : items;
@@ -177,7 +211,9 @@ export default function App() {
             contentContainerStyle={{ gap: 8, paddingVertical: 8, paddingHorizontal: 4}}
             renderItem={({ item }) => (
               <View style={styles.item}>
-                <Text style={{ flex: 1 }}>{item.text}</Text>
+                <Pressable style={{ flex: 1 }} onLongPress={() => openEdit(item)}>
+                  <Text>{item.text}</Text>
+                </Pressable>
                 <Pressable onPress={() => requestDelete(item.id)}>
                   <Text style={styles.delete}>Delete</Text>
                 </Pressable>
@@ -199,6 +235,31 @@ export default function App() {
               </TouchableOpacity>
               <TouchableOpacity style={[styles.modalBtn, styles.modalDanger]} onPress={confirmDelete}>
                 <Text style={[styles.modalBtnText, { color: '#fff' }]}>Delete</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
+      
+      <Modal transparent visible={!!editing} animationType='slide' onRequestClose={cancelEdit}>
+        <View style={styles.modalBackdrop}>
+          <View style={styles.modalCard}>
+            <Text style={styles.modalTitle}>Edit Memo</Text>
+            <Text style={styles.modalText}>Press Save after editing.</Text>
+
+            <TextInput value={editText} onChangeText={(v) => setEditText(v.length <= MAX_LEN ? v : v.slice(0, MAX_LEN))}
+              placeholder='Type the memo with at least 3 letters' style={[styles.input, { alignSelf: 'stretch'}]}
+              autoFocus returnKeyType='done' onSubmitEditing={saveEdit} />
+            <Text style={{ alignSelf: 'flex-end', color: '#777' }}>
+              {editText.length} / {MAX_LEN}
+            </Text> 
+
+            <View style={styles.modalRow}>
+              <TouchableOpacity style={[styles.modalBtn, styles.modalCancel]} onPress={cancelEdit}>
+                <Text style={styles.modalBtnText}>Cancel</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={[styles.modalBtn, styles.modalDanger]} onPress={saveEdit}>
+                <Text style={[styles.modalBtnText, { color: '#fff' }]}>Save</Text>
               </TouchableOpacity>
             </View>
           </View>
