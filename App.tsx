@@ -241,6 +241,7 @@ export default function App() {
         </View>
       </Modal>
       
+      {/* 편집 Modal */}
       <Modal transparent visible={!!editing} animationType='slide' onRequestClose={cancelEdit}>
         <View style={styles.modalBackdrop}>
           <View style={styles.modalCard}>
@@ -265,7 +266,7 @@ export default function App() {
           </View>
         </View>
       </Modal>
-      
+
       {/* 토스트 */}
       { toast && (
         <View style={styles.toastWrap} pointerEvents='none'>
