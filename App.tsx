@@ -1,4 +1,5 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { GestureHandlerRootView, Swipeable } from 'react-native-gesture-handler';
 import { useState, useMemo, useEffect, useRef } from 'react';
 import { SafeAreaView, View, Text, Pressable, StyleSheet, TextInput, FlatList, Modal, TouchableOpacity } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
@@ -72,6 +73,22 @@ export default function App() {
     Haptics.selectionAsync?.();
     showToast('Memo was restored!');
   }
+
+  const RightActions = ({ onPress }: { onPress: () => void }) => (
+    <Pressable onPress={onPress}
+      style={{
+        backgroundColor: '#c0392b',
+        justifyContent: 'center',
+        alignItems: 'center',
+        width: 88,
+        height: '100%',
+        borderTopRightRadius: 12,
+        borderBottomRightRadius: 12,
+      }}
+    >
+      <Text style={{ color: '#fff', fontWeight: '800' }}>Delete</Text>
+    </Pressable>
+  );
 
   // 초기 데이터 로드
   useEffect(() => {
@@ -184,145 +201,168 @@ export default function App() {
   const empty = useMemo(() => filtered.length === 0, [filtered.length]);
 
   return (
-    <SafeAreaView style={styles.container}>
-      <Text style={styles.title}>Mini Counter</Text>
+    <GestureHandlerRootView style={{ flex: 1 }}>
+      <SafeAreaView style={styles.container}>
+        <Text style={styles.title}>Mini Counter</Text>
 
-      {/* 입력 */}
-      <View style={styles.inputRow}>
-        <TextInput value={text} onChangeText={(v) => setText(limitedText(v))}
-          placeholder='내용을 입력하세요.'
-          style={styles.input}
-          returnKeyType='done'
-          onSubmitEditing={addItem}
-        />
-        
-        <Pressable style={[styles.addBtn, !canAdd && styles.addBtnDisabled]}
-          onPress={addItem}
-          disabled={!canAdd}
-        >
-          <Text style={styles.addBtnText}>Add</Text>
-        </Pressable>
-        <Pressable style={[styles.btn, { backgroundColor: '#b00' }]}
-          onPress={async () => {
-            setItems([]);
-            setQuery?.('');
-
-            setLastDeleted(null);
-            if (undoTimerRef.current) { clearTimeout(undoTimerRef.current); undoTimerRef.current = null; }
-            
-            await AsyncStorage.removeItem(STORAGE_KEY);
-          }}
-        >
-          <Text style={styles.btnText}>Clear All</Text>
-        </Pressable>
-      </View>
-      <Text style={styles.helper}>
-          {isDuplicate
-            ? '이미 같은 메모가 있어요!'
-            : `입력: ${trimmed || '(비어있음)'}. 길이: ${text.length} (남은 ${remaining})`}
-        </Text>
-
-      {/* Counter */}
-      <Text style={styles.count}>{n}</Text>
-      <View style={styles.row}>
-        <Pressable style={styles.btn} onPress={() => setN(v => v - 1)}>
-          <Text style={styles.btnText}>-1</Text>
-        </Pressable>
-        <Pressable style={styles.btn} onPress={() => setN(0)}>
-          <Text style={styles.btnText}>Reset</Text>
-        </Pressable>
-        <Pressable style={styles.btn} onPress={() => setN(v => v + 1)}>
-          <Text style={styles.btnText}>+1</Text>
-        </Pressable>
-      </View>
-
-      <TextInput value={query} onChangeText={setQuery} placeholder='Search...' style={[styles.input, { marginTop: 4, alignSelf: 'stretch'}]} />
-
-      {/* List */}
-      <View style={{ alignSelf: 'stretch', marginTop: 16, flex: 1, maxHeight: 300}}>
-        {empty ? (
-          <View style={styles.emptyBox}>
-            <Text style={{ color: '#777' }}>{query ? `No matches.` : 'List is empty. Add some items!'}</Text>
-          </View>
-        ) : (
-          <FlatList
-            data={filtered}
-            keyExtractor={(it) => it.id}
-            contentContainerStyle={{ gap: 8, paddingVertical: 8, paddingHorizontal: 4}}
-            renderItem={({ item }) => (
-              <View style={styles.item}>
-                <Pressable style={{ flex: 1 }} onLongPress={() => openEdit(item)}>
-                  <Text>{item.text}</Text>
-                </Pressable>
-                <Pressable onPress={() => requestDelete(item.id)}>
-                  <Text style={styles.delete}>Delete</Text>
-                </Pressable>
-              </View>
-            )}
+        {/* 입력 */}
+        <View style={styles.inputRow}>
+          <TextInput value={text} onChangeText={(v) => setText(limitedText(v))}
+            placeholder='내용을 입력하세요.'
+            style={styles.input}
+            returnKeyType='done'
+            onSubmitEditing={addItem}
           />
+          
+          <Pressable style={[styles.addBtn, !canAdd && styles.addBtnDisabled]}
+            onPress={addItem}
+            disabled={!canAdd}
+          >
+            <Text style={styles.addBtnText}>Add</Text>
+          </Pressable>
+          <Pressable style={[styles.btn, { backgroundColor: '#b00' }]}
+            onPress={async () => {
+              setItems([]);
+              setQuery?.('');
+
+              setLastDeleted(null);
+              if (undoTimerRef.current) { clearTimeout(undoTimerRef.current); undoTimerRef.current = null; }
+
+              await AsyncStorage.removeItem(STORAGE_KEY);
+            }}
+          >
+            <Text style={styles.btnText}>Clear All</Text>
+          </Pressable>
+        </View>
+        <Text style={styles.helper}>
+            {isDuplicate
+              ? '이미 같은 메모가 있어요!'
+              : `입력: ${trimmed || '(비어있음)'}. 길이: ${text.length} (남은 ${remaining})`}
+          </Text>
+
+        {/* Counter */}
+        <Text style={styles.count}>{n}</Text>
+        <View style={styles.row}>
+          <Pressable style={styles.btn} onPress={() => setN(v => v - 1)}>
+            <Text style={styles.btnText}>-1</Text>
+          </Pressable>
+          <Pressable style={styles.btn} onPress={() => setN(0)}>
+            <Text style={styles.btnText}>Reset</Text>
+          </Pressable>
+          <Pressable style={styles.btn} onPress={() => setN(v => v + 1)}>
+            <Text style={styles.btnText}>+1</Text>
+          </Pressable>
+        </View>
+
+        <TextInput value={query} onChangeText={setQuery} placeholder='Search...' style={[styles.input, { marginTop: 4, alignSelf: 'stretch'}]} />
+
+        {/* List */}
+        <View style={{ alignSelf: 'stretch', marginTop: 16, flex: 1, maxHeight: 300}}>
+          {empty ? (
+            <View style={styles.emptyBox}>
+              <Text style={{ color: '#777' }}>{query ? `No matches.` : 'List is empty. Add some items!'}</Text>
+            </View>
+          ) : (
+            <FlatList
+              data={filtered}
+              keyExtractor={(it) => it.id}
+              contentContainerStyle={{ gap: 8, paddingVertical: 8, paddingHorizontal: 4}}
+
+              renderItem={({ item }) => {
+                const rowRef = { current: null as Swipeable | null };
+
+                return (
+                  <Swipeable
+                    ref={(r) => ( rowRef.current = r )}
+                    overshootRight={false}
+                    friction={2}
+                    renderRightActions={() => (
+                      <RightActions
+                        onPress={() => {
+                          // 1. Swipe Close
+                          rowRef.current?.close();
+                          // 2. original logic: open delete confirm modal
+                          requestDelete(item.id);
+                        }}
+                      />
+                    )}
+                  >
+                    <View style={styles.item}>
+                      <Pressable style={{ flex: 1 }} onLongPress={() => openEdit(item)}>
+                        <Text>{item.text}</Text>
+                      </Pressable>
+                      {/* <Pressable onPress={() => requestDelete(item.id)}>
+                        <Text style={styles.delete}>Delete</Text>
+                      </Pressable> */}
+                    </View>
+                  </Swipeable>
+                )
+              }}
+            />
+          )}
+        </View>
+        
+        {/* 삭제 확인 모달 */}
+        <Modal transparent visible={!!pendingDeleteId} animationType='fade' onRequestClose={cancelDelete}>
+          <View style={styles.modalBackdrop}>
+            <View style={styles.modalCard}>
+              <Text style={styles.modalTitle}>Memo를 정말 삭제할까요?</Text>
+              <Text style={styles.modalText}>삭제한 Memo는 되돌릴 수 없습니다.</Text>
+              <View style={styles.modalRow}>
+                <TouchableOpacity style={[styles.modalBtn, styles.modalCancel]} onPress={cancelDelete}>
+                  <Text style={styles.modalBtnText}>Cancel</Text>
+                </TouchableOpacity>
+                <TouchableOpacity style={[styles.modalBtn, styles.modalDanger]} onPress={confirmDelete}>
+                  <Text style={[styles.modalBtnText, { color: '#fff' }]}>Delete</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+          </View>
+        </Modal>
+        
+        {/* 편집 Modal */}
+        <Modal transparent visible={!!editing} animationType='slide' onRequestClose={cancelEdit}>
+          <View style={styles.modalBackdrop}>
+            <View style={styles.modalCard}>
+              <Text style={styles.modalTitle}>Edit Memo</Text>
+              <Text style={styles.modalText}>Press Save after editing.</Text>
+
+              <TextInput value={editText} onChangeText={(v) => setEditText(v.length <= MAX_LEN ? v : v.slice(0, MAX_LEN))}
+                placeholder='Type the memo with at least 3 letters' style={[styles.input, { alignSelf: 'stretch'}]}
+                autoFocus returnKeyType='done' onSubmitEditing={saveEdit} />
+              <Text style={{ alignSelf: 'flex-end', color: '#777' }}>
+                {editText.length} / {MAX_LEN}
+              </Text> 
+
+              <View style={styles.modalRow}>
+                <TouchableOpacity style={[styles.modalBtn, styles.modalCancel]} onPress={cancelEdit}>
+                  <Text style={styles.modalBtnText}>Cancel</Text>
+                </TouchableOpacity>
+                <TouchableOpacity style={[styles.modalBtn, styles.modalDanger]} onPress={saveEdit}>
+                  <Text style={[styles.modalBtnText, { color: '#fff' }]}>Save</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+          </View>
+        </Modal>
+
+        {/* 토스트 */}
+        { toast && (
+          <View style={styles.toastWrap} pointerEvents='box-none'>
+            <View style={styles.toastCard}>
+              <Text style={styles.toastText}>{toast}</Text>
+              {lastDeleted && (
+                <Pressable onPress={undoDelete} style={{ marginTop: 6, alignSelf: 'flex-end'}}>
+                  <Text style={{ color: '#74b9ff', fontWeight: '700' }}>Undo</Text>
+                </Pressable>
+              )}
+            </View>
+          </View>
         )}
-      </View>
-      
-      {/* 삭제 확인 모달 */}
-      <Modal transparent visible={!!pendingDeleteId} animationType='fade' onRequestClose={cancelDelete}>
-        <View style={styles.modalBackdrop}>
-          <View style={styles.modalCard}>
-            <Text style={styles.modalTitle}>Memo를 정말 삭제할까요?</Text>
-            <Text style={styles.modalText}>삭제한 Memo는 되돌릴 수 없습니다.</Text>
-            <View style={styles.modalRow}>
-              <TouchableOpacity style={[styles.modalBtn, styles.modalCancel]} onPress={cancelDelete}>
-                <Text style={styles.modalBtnText}>Cancel</Text>
-              </TouchableOpacity>
-              <TouchableOpacity style={[styles.modalBtn, styles.modalDanger]} onPress={confirmDelete}>
-                <Text style={[styles.modalBtnText, { color: '#fff' }]}>Delete</Text>
-              </TouchableOpacity>
-            </View>
-          </View>
-        </View>
-      </Modal>
-      
-      {/* 편집 Modal */}
-      <Modal transparent visible={!!editing} animationType='slide' onRequestClose={cancelEdit}>
-        <View style={styles.modalBackdrop}>
-          <View style={styles.modalCard}>
-            <Text style={styles.modalTitle}>Edit Memo</Text>
-            <Text style={styles.modalText}>Press Save after editing.</Text>
 
-            <TextInput value={editText} onChangeText={(v) => setEditText(v.length <= MAX_LEN ? v : v.slice(0, MAX_LEN))}
-              placeholder='Type the memo with at least 3 letters' style={[styles.input, { alignSelf: 'stretch'}]}
-              autoFocus returnKeyType='done' onSubmitEditing={saveEdit} />
-            <Text style={{ alignSelf: 'flex-end', color: '#777' }}>
-              {editText.length} / {MAX_LEN}
-            </Text> 
-
-            <View style={styles.modalRow}>
-              <TouchableOpacity style={[styles.modalBtn, styles.modalCancel]} onPress={cancelEdit}>
-                <Text style={styles.modalBtnText}>Cancel</Text>
-              </TouchableOpacity>
-              <TouchableOpacity style={[styles.modalBtn, styles.modalDanger]} onPress={saveEdit}>
-                <Text style={[styles.modalBtnText, { color: '#fff' }]}>Save</Text>
-              </TouchableOpacity>
-            </View>
-          </View>
-        </View>
-      </Modal>
-
-      {/* 토스트 */}
-      { toast && (
-        <View style={styles.toastWrap} pointerEvents='box-none'>
-          <View style={styles.toastCard}>
-            <Text style={styles.toastText}>{toast}</Text>
-            {lastDeleted && (
-              <Pressable onPress={undoDelete} style={{ marginTop: 6, alignSelf: 'flex-end'}}>
-                <Text style={{ color: '#74b9ff', fontWeight: '700' }}>Undo</Text>
-              </Pressable>
-            )}
-          </View>
-        </View>
-      )}
-
-      <StatusBar style="auto" />
-    </SafeAreaView>
+        <StatusBar style="auto" />
+      </SafeAreaView>
+    </GestureHandlerRootView>
 
   );
 }
