@@ -18,6 +18,7 @@ export default function App() {
   const [items, setItems] = useState<Item[]>([]);
   const [pendingDeleteId, setPendingDeleteId] = useState<string | null>(null);
   const [toast, setToast] = useState<string | null>(null);
+  const [query, setQuery] = useState('');
 
   // 삭제 버튼 눌렀을 때 (삭제 확인 모달 오픈)
   const requestDelete = (id: string) => {
@@ -105,7 +106,13 @@ export default function App() {
     setItems(prev => prev.filter(i => i.id !== id));
   };
 
-  const empty = useMemo(() => items.length === 0, [items.length]);
+  const filtered = useMemo(() => {
+    const q = normalize(query);
+    return q ? items.filter(i => normalize(i.text).includes(q)) : items;
+  }, [items, query]);
+
+  // const empty = useMemo(() => items.length === 0, [items.length]);
+  const empty = useMemo(() => filtered.length === 0, [filtered.length]);
 
   return (
     <SafeAreaView style={styles.container}>
@@ -155,15 +162,17 @@ export default function App() {
         </Pressable>
       </View>
 
+      <TextInput value={query} onChangeText={setQuery} placeholder='Search...' style={[styles.input, { marginTop: 4, alignSelf: 'stretch'}]} />
+
       {/* List */}
       <View style={{ alignSelf: 'stretch', marginTop: 16, flex: 1, maxHeight: 300}}>
         {empty ? (
           <View style={styles.emptyBox}>
-            <Text style={{ color: '#777' }}>List is empty. Add some items!</Text>
+            <Text style={{ color: '#777' }}>{query ? `No matches.` : 'List is empty. Add some items!'}</Text>
           </View>
         ) : (
           <FlatList
-            data={items}
+            data={filtered}
             keyExtractor={(it) => it.id}
             contentContainerStyle={{ gap: 8, paddingVertical: 8, paddingHorizontal: 4}}
             renderItem={({ item }) => (
@@ -242,7 +251,7 @@ const styles = StyleSheet.create({
   delete: { color: '#d00', fontWeight: '700' },
   modalBackdrop: {
     position: 'absolute', inset: 0,
-    backgroundColor: 'rbga(0,0,0,0.3)',
+    backgroundColor: 'rgba(0,0,0,0.3)',
     alignItems: 'center', justifyContent: 'center', padding: 24,
   },
   modalCard: {
